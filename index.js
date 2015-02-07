@@ -186,3 +186,4 @@ server.route({
 
 
 server.start();
+console.log("Started server at " +BASE_URI+ " (port " +PORT+ ")");
