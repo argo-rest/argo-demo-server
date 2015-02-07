@@ -73,6 +73,8 @@ server.route({
     method: 'GET',
     path: '/',
     handler: function (request, reply) {
+        console.log("Received request for /");
+
         var root = entity({
           title: "Demo API for argo"
         }).
