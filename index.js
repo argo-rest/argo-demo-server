@@ -3,7 +3,7 @@ var Hapi = require('hapi');
 var PORT = process.env['PORT'] || 8000;
 var BASE_URI = process.env['BASE_URI'] || "http://localhost:" + PORT;
 
-var server = new Hapi.Server('localhost', PORT, {cors: true});
+var server = new Hapi.Server('0.0.0.0', PORT, {cors: true});
 
 var NEXT_AVAILABLE_ID = 1;
 
