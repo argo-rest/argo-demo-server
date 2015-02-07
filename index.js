@@ -188,4 +188,4 @@ server.route({
 
 
 server.start();
-console.log("Started server at " +BASE_URI+ " (port " +PORT+ ")");
+console.log("Started server at " +server.info.uri+ " (port " +PORT+ ", base URI " +BASE_URI+ ")");
