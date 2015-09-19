@@ -3,7 +3,8 @@ var Hapi = require('hapi');
 var PORT = process.env['PORT'] || 8000;
 var BASE_URI = process.env['BASE_URI'] || "http://localhost:" + PORT;
 
-var server = new Hapi.Server('0.0.0.0', PORT, {cors: true});
+var server = new Hapi.Server();
+server.connection({host: '0.0.0.0', port: PORT });
 
 var NEXT_AVAILABLE_ID = 1;
 
@@ -186,6 +187,6 @@ server.route({
     }
 });
 
-
-server.start();
-console.log("Started server at " +server.info.uri+ " (port " +PORT+ ", base URI " +BASE_URI+ ")");
+server.start(function () {
+    console.log("Started server at " +server.info.uri+ " (port " +PORT+ ", base URI " +BASE_URI+ ")");
+});

@@ -1,10 +1,10 @@
 {
   "name": "argo-demo-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Demo server of an argo hypermedia API",
   "main": "index.js",
   "dependencies": {
-    "hapi": "^6.8.1"
+    "hapi": "^9.0.0"
   },
   "devDependencies": {},
   "scripts": {
