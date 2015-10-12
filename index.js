@@ -4,7 +4,7 @@ var PORT = process.env['PORT'] || 8000;
 var BASE_URI = process.env['BASE_URI'] || "http://localhost:" + PORT;
 
 var server = new Hapi.Server();
-server.connection({host: '0.0.0.0', port: PORT });
+server.connection({host: '0.0.0.0', port: PORT});
 
 var NEXT_AVAILABLE_ID = 1;
 
@@ -20,9 +20,9 @@ var BOOKS = [
 ];
 
 function Book(title, author) {
-    this.id = NEXT_AVAILABLE_ID++;
-    this.title = title;
-    this.author = author;
+  this.id = NEXT_AVAILABLE_ID++;
+  this.title = title;
+  this.author = author;
 }
 
 
@@ -32,161 +32,194 @@ function fullUri(path) {
 
 
 function entity(data, uri) {
-    return new Entity(uri, data);
+  return new Entity(uri, data);
 }
 
 function collection(data, offset, total, uri) {
-    return new Entity(uri, data, undefined, offset, data.length, total);
+  return new Entity(uri, data, undefined, offset, data.length, total);
 }
 
 function link(rel, href) {
-    return new Link(rel, href);
+  return new Link(rel, href);
 }
 
 // FIXME: split Entity and CollectionEntity
 function Entity(uri, data, links, offset, length, total) {
-    this.uri = uri;
-    this.offset = offset;
-    this.length = length;
-    this.total  = total;
-    this.data = data;
-    this.links = links;
+  this.uri = uri;
+  this.offset = offset;
+  this.length = length;
+  this.total = total;
+  this.data = data;
+  this.links = links;
 }
 
-Entity.prototype.addLink = function(rel, href) {
-    return new Entity(this.uri, this.data, (this.links || []).concat(link(rel, href)), this.offset, this.offset, this.length);
+Entity.prototype.addLink = function (rel, href) {
+  return new Entity(this.uri, this.data, (this.links || []).concat(link(rel, href)), this.offset, this.offset, this.length);
 };
 
 function Link(rel, href) {
-    this.rel = rel;
-    this.href = href;
+  this.rel = rel;
+  this.href = href;
 }
 
 function replyEntity(reply, entity) {
-    return reply(entity).header('Content-Type', 'application/vnd.argo+json');
+  return reply(entity).header('Content-Type', 'application/vnd.argo+json');
 }
 
 function asBookEntity(book) {
-    return entity(book, fullUri('/books/' + book.id));
+  return entity(book, fullUri('/books/' + book.id));
 }
 
 server.route({
-    method: 'GET',
-    path: '/',
-    handler: function (request, reply) {
-        console.log("Received request for /");
+  method: 'GET',
+  path: '/',
+  handler: function (request, reply) {
+    console.log("Received request for /");
 
-        var root = entity({
-          title: "Demo API for argo"
-        }).
-              addLink('books', fullUri('/books')).
-              addLink('authors', fullUri('/authors'));
+    var root = entity({
+      title: "Demo API for argo"
+    }).
+      addLink('books', fullUri(server.lookup('books').path)).
+      addLink('authors', fullUri(server.lookup('authors').path));
 
-        replyEntity(reply, root);
-    }
+    console.log('%j', root);
+    replyEntity(reply, root);
+  },
+  config: {
+    id: 'root'
+  }
 });
 
 server.route({
-    method: 'GET',
-    path: '/books',
-    handler: function (request, reply) {
-        var offset = Number(request.query.offset) || 0;
-        var length = Number(request.query.length) || 5;
+  method: 'GET',
+  path: '/books',
+  handler: function (request, reply) {
+    var offset = Number(request.query.offset) || 0;
+    var length = Number(request.query.length) || 5;
 
-        var booksSlice = BOOKS.slice(offset, offset+length);
+    var booksSlice = BOOKS.slice(offset, offset + length);
 
-        var coll = collection(booksSlice.map(asBookEntity), offset, BOOKS.length).
-              addLink('root', fullUri('/'));
+    var coll = collection(booksSlice.map(asBookEntity), offset, BOOKS.length).
+        addLink('root', fullUri(server.lookup('root').path)).
+        addLink('create', fullUri(server.lookup('books.create').path));
 
-        if (offset > 0) {
-            // FIXME: not negative!
-            coll = coll.addLink('prev', fullUri('/books?offset=' + (offset-length) + '&length=' + length));
-        }
-        if (BOOKS.length > offset + length) {
-            coll = coll.addLink('next', fullUri('/books?offset=' + (offset+length) + '&length=' + length));
-        }
-
-        replyEntity(reply, coll);
+    if (offset > 0) {
+      // FIXME: not negative!
+      coll = coll.addLink('prev', fullUri('/books?offset=' + (offset - length) + '&length=' + length));
     }
+    if (BOOKS.length > offset + length) {
+      coll = coll.addLink('next', fullUri('/books?offset=' + (offset + length) + '&length=' + length));
+    }
+
+    replyEntity(reply, coll);
+  },
+  config: {
+    id: 'books'
+  }
 });
 
 server.route({
-    method: 'POST',
-    path: '/books',
-    handler: function (request, reply) {
-        var title = request.payload.title;
-        var author = request.payload.author;
-        // FIXME: error if missing
+  method: 'POST',
+  path: '/books',
+  handler: function (request, reply) {
+    var title = request.payload.title;
+    var author = request.payload.author;
+    // FIXME: error if missing
 
-        var book = new Book(title, author);
-        BOOKS.push(book);
+    var book = new Book(title, author);
+    BOOKS.push(book);
 
-        replyEntity(reply, asBookEntity(book));
-    }
+    replyEntity(reply, asBookEntity(book));
+  },
+  config: {
+    id: 'books.create'
+  }
 });
 
 server.route({
-    method: 'GET',
-    path: '/books/{id}',
-    handler: function (request, reply) {
-        var id = Number(request.params.id);
-        var book = BOOKS.filter(function(b){ return b.id === id; })[0];
-        if (book) {
-            var bookEntity = asBookEntity(book).addLink('root', fullUri('/'));
+  method: 'GET',
+  path: '/books/{id}',
+  handler: function (request, reply) {
+    var id = Number(request.params.id);
+    var book = BOOKS.filter(function (b) {
+      return b.id === id;
+    })[0];
+    if (book) {
+      var bookEntity = asBookEntity(book).addLink('root', fullUri('/'));
 
-            replyEntity(reply, bookEntity);
-        } else {
-            replyEntity(reply, {errorKey: 'not-found'}).code(404);
-        }
+      replyEntity(reply, bookEntity);
+    } else {
+      replyEntity(reply, {errorKey: 'not-found'}).code(404);
     }
+  },
+  config: {
+    id: 'books.get'
+  }
 });
 
 server.route({
-    method: 'PUT',
-    path: '/books/{id}',
-    handler: function (request, reply) {
-        var id = Number(request.params.id);
-        var bookRef = BOOKS.filter(function(b){ return b.id === id; })[0];
-        if (bookRef) {
-            var title = request.payload.title;
-            var author = request.payload.author;
-            // FIXME: error if missing
+  method: 'PUT',
+  path: '/books/{id}',
+  handler: function (request, reply) {
+    var id = Number(request.params.id);
+    var bookRef = BOOKS.filter(function (b) {
+      return b.id === id;
+    })[0];
+    if (bookRef) {
+      var title = request.payload.title;
+      var author = request.payload.author;
+      // FIXME: error if missing
 
-            bookRef.title = title;
-            bookRef.author = author;
-            reply().code(204);
-        } else {
-            replyEntity(reply, {errorKey: 'not-found'}).code(404);
-        }
+      bookRef.title = title;
+      bookRef.author = author;
+      reply().code(204);
+    } else {
+      replyEntity(reply, {errorKey: 'not-found'}).code(404);
     }
+  },
+  config: {
+    id: 'books.update'
+  }
 });
 
 server.route({
-    method: 'DELETE',
-    path: '/books/{id}',
-    handler: function (request, reply) {
-        var id = Number(request.params.id);
-        var bookRef = BOOKS.filter(function(b){ return b.id === id; })[0];
-        if (bookRef) {
-            BOOKS = BOOKS.filter(function(b){ return b.id !== id; });
+  method: 'DELETE',
+  path: '/books/{id}',
+  handler: function (request, reply) {
+    var id = Number(request.params.id);
+    var bookRef = BOOKS.filter(function (b) {
+      return b.id === id;
+    })[0];
+    if (bookRef) {
+      BOOKS = BOOKS.filter(function (b) {
+        return b.id !== id;
+      });
 
-            reply().code(204);
-        } else {
-            replyEntity(reply, {errorKey: 'not-found'}).code(404);
-        }
+      reply().code(204);
+    } else {
+      replyEntity(reply, {errorKey: 'not-found'}).code(404);
     }
+  },
+  config: {
+    id: 'books.delete'
+  }
 });
 
 server.route({
-    method: 'GET',
-    path: '/authors',
-    handler: function (request, reply) {
-      // FIXME?
-      var authors = collection(BOOKS.map(function(book){ return book.author; }).sort());
-      replyEntity(reply, authors);
-    }
+  method: 'GET',
+  path: '/authors',
+  handler: function (request, reply) {
+    // FIXME?
+    var authors = collection(BOOKS.map(function (book) {
+      return book.author;
+    }).sort());
+    replyEntity(reply, authors);
+  },
+  config: {
+    id: 'authors'
+  }
 });
 
 server.start(function () {
-    console.log("Started server at " +server.info.uri+ " (port " +PORT+ ", base URI " +BASE_URI+ ")");
+  console.log("Started server at " + server.info.uri + " (port " + PORT + ", base URI " + BASE_URI + ")");
 });
